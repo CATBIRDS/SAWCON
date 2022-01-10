@@ -30,3 +30,13 @@
 *.exe
 *.out
 *.app
+
+# Other
+bin/*
+obj/*
+obj/*
+Properties/*
+.vs/*
+.vscode/*
+*.csproj.user
+
