@@ -1,2 +1,2 @@
 # SAWCon
-Static Audio WebM Creator: ON
+Static Audio WebM Creator: Optimized for Nerds
