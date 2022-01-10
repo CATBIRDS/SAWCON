@@ -1,2 +1,2 @@
-# SAWCon
-Static Audio WebM Creator: Optimized for Nerds
+# SAWCON
+Static Audio Webm Creator: Optimized for Nerds
