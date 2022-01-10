@@ -5,6 +5,7 @@ Put simply, SAWCON combines image and audio data to create a webm video.
 
 ### Features:
 - Combines audio and image files as specified by the user, to create a webm video file featuring the static image with the audio playing in the background
+- Full transparency support
 - Customizable filesize limits and output location
 - Quality maximization for both image and audio components, within a specified filesize
 - Automatic detection and utilization of embedded image data from audio files, where applicable
