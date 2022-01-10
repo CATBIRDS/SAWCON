@@ -148,9 +148,10 @@ public class Form1 : Form
         string audioDuration = "Duration: ";
         string audioTrack = "Track Number: ";
         string audioSize = "Size: ";
+        string audioCodec = "Codec: ";
         // add to first row of audioContainer
         audioContainer.Controls.Add(audioInfoDisplay, 0, 0);
-        this.updateTextBox(audioTitle, audioArtist, audioAlbum, audioDuration, audioTrack, audioSize);
+        this.updateTextBox(audioTitle, audioArtist, audioAlbum, audioDuration, audioTrack, audioSize, audioCodec);
 
         // File Size Preset Checkbox
         CheckBox fileSizePreset = new CheckBox();
@@ -253,7 +254,7 @@ public class Form1 : Form
         // Open dialog in current directory to select image file
         OpenFileDialog openImageDialog = new OpenFileDialog();
         openImageDialog.InitialDirectory = System.IO.Directory.GetCurrentDirectory();
-        openImageDialog.Filter = "Image Files|*.BMP;*.JPG;*.JPEG;*.PNG;*.GIF;*.APNG;*.TIFF;*.TIF;*.WEBP;*.JPEG2000;*.TGA"; //|All Files|*.*
+        openImageDialog.Filter = "Image Files|*.BMP;*.JPG;*.JPEG;*.PNG;*.GIF;*.TIFF;*.TIF;;*.JPEG2000;*.TGA"; //|All Files|*.*
         openImageDialog.FilterIndex = 1;
         openImageDialog.RestoreDirectory = true;
 
@@ -314,6 +315,8 @@ public class Form1 : Form
         string ffmpegCommand = "-hide_banner -i " + "\"" + audioFilePath + "\"" + " -f ffmetadata ";
         string ffmpegOutput = "";
         System.Diagnostics.Process ffmpeg = new System.Diagnostics.Process();
+        ffmpeg.StartInfo.StandardOutputEncoding = System.Text.Encoding.UTF8;
+        ffmpeg.StartInfo.StandardErrorEncoding = System.Text.Encoding.UTF8;
         ffmpeg.StartInfo.CreateNoWindow = true;
         ffmpeg.StartInfo.UseShellExecute = false;
         ffmpeg.StartInfo.RedirectStandardOutput = true;
@@ -332,30 +335,32 @@ public class Form1 : Form
         string audioDuration = "Duration: UNKNOWN";
         string audioTrack = "Track Number: UNKNOWN";
         string audioSize = "Size: UNKNOWN";
+        string audioCodec = "Codec: UNKNOWN";
         // Parse ffmpeg output
         string[] ffmpegOutputLines = ffmpegOutput.Split('\n');
         foreach (string line in ffmpegOutputLines)
         {
-            if (line.Contains("TITLE"))
+            if (audioTitle == "Title: UNKNOWN" && (line.Contains("TITLE") || line.Contains("title")))
             {
                 this.audioTitle = line.Substring(line.IndexOf(":") + 1);
                 audioTitle = "Title: " + line.Substring(line.IndexOf(':') + 1).Trim();
             }
-            else if (line.Contains("ARTIST"))
+            else if (audioArtist == "Artist: UNKNOWN" && (line.Contains("ARTIST") || line.Contains("artist")))
             {
                 this.audioArtist = line.Substring(line.IndexOf(":") + 1);
                 audioArtist = "Artist: " + line.Substring(line.IndexOf(':') + 1).Trim();
             }
-            else if (line.Contains("ALBUM"))
+            else if (audioAlbum == "Album: UNKNOWN" && (line.Contains("ALBUM") || line.Contains("album")))
             {
                 this.audioAlbum = line.Substring(line.IndexOf(":") + 1);
                 audioAlbum = "Album: " + line.Substring(line.IndexOf(':') + 1).Trim();
             }
-            else if (line.Contains("track"))
+            else if (audioTrack == "Track Number: UNKNOWN" && line.Contains("track"))
             {
-                audioTrack = "Track Number: " + line.Substring(line.IndexOf(':') + 1).Trim();
+                string track = String.Format("{0:00}", int.Parse(line.Substring(line.IndexOf(":") + 1)));
+                audioTrack = "Track Number: " + track.Trim();
             }
-            else if (line.Contains("Duration"))
+            else if (audioDuration == "Duration: UNKNOWN" && line.Contains("Duration"))
             {
                 string audioDurationLine = line.Substring(line.IndexOf(':') + 1);
                 string[] audioDurationSplit = audioDurationLine.Split(':');
@@ -364,6 +369,12 @@ public class Form1 : Form
                 int audioDurationSeconds = int.Parse(audioDurationSplit[2].Substring(0, audioDurationSplit[2].IndexOf('.')));
                 audioDuration = "Duration: " + string.Format("{0:00}", audioDurationHours) + ":" + string.Format("{0:00}", audioDurationMinutes) + ":" + string.Format("{0:00}", audioDurationSeconds);
                 this.audioDuration = audioDurationHours * 3600 + audioDurationMinutes * 60 + audioDurationSeconds;
+            }
+            else if (audioCodec == "Codec: UNKNOWN" && line.Contains("Stream #0:0: Audio:"))
+            {
+                string codec = line.Substring(line.IndexOf("Audio:") + 7);
+                codec = codec.Substring(0, codec.IndexOf(','));
+                audioCodec = "Codec: " + codec.ToUpper().Trim();
             }
         }
 
@@ -374,6 +385,7 @@ public class Form1 : Form
             string albumArtPath = tempPath + "SAWCON-ExtractedCover.png";
             string coverCommand = "-y -hide_banner -loglevel error -i " + "\"" + audioFilePath + "\" " + albumArtPath;
             System.Diagnostics.Process cover = new System.Diagnostics.Process();
+            cover.StartInfo.StandardOutputEncoding = System.Text.Encoding.UTF8;
             cover.StartInfo.CreateNoWindow = true;
             cover.StartInfo.UseShellExecute = false;
             cover.StartInfo.RedirectStandardOutput = true;
@@ -393,7 +405,7 @@ public class Form1 : Form
         double size = length / (1024.0 * 1024.0);
         this.audioFileSize = size;
         audioSize = "Size: " + size.ToString("0.00") + " MB";
-        this.updateTextBox(audioTitle, audioArtist, audioAlbum, audioDuration, audioTrack, audioSize);
+        this.updateTextBox(audioTitle, audioArtist, audioAlbum, audioDuration, audioTrack, audioSize, audioCodec);
     }
 
     // checkbox event handler
@@ -480,7 +492,7 @@ public class Form1 : Form
     }
 
     // update audioInfoDisplay
-    private void updateTextBox(string audioTitle, string audioArtist, string audioAlbum, string audioDuration, string audioTrack, string audioSize)
+    private void updateTextBox(string audioTitle, string audioArtist, string audioAlbum, string audioDuration, string audioTrack, string audioSize, string audioCodec)
     {
         TextBox audioInfoDisplay = (TextBox)this.Controls.Find("audioInfoDisplay", true)[0];
         audioInfoDisplay.AppendText(audioTitle);
@@ -494,6 +506,8 @@ public class Form1 : Form
         audioInfoDisplay.AppendText(audioDuration);
         audioInfoDisplay.AppendText(Environment.NewLine);
         audioInfoDisplay.AppendText(audioSize);
+        audioInfoDisplay.AppendText(Environment.NewLine);
+        audioInfoDisplay.AppendText(audioCodec);
     }
 
     // createWebm
@@ -524,14 +538,17 @@ public class Form1 : Form
         string ffmpegCommand = "-framerate 1 -y" +
                                 " -i \"" + this.imageFilePath + "\"" +
                                 " -i \"" + this.audioFilePath + "\"" +
-                                " -c:v libvpx -b:v 2M" +
+                                " -c:v libvpx -pix_fmt yuva420p -b:v 2M" +
                                 " -c:a libvorbis -q:a \"" + audioQuality.ToString() + "\"" +
                                 " -g 10000 -force_key_frames 0" +
                                 " -metadata title=\"" + this.audioTitle.Trim() + "\"" +
                                 " -metadata subtitle=\"" + this.audioArtist.Trim() + " - " + this.audioAlbum.Trim() + "\"" +
                                 " -metadata comment=\"" + shill + "\"" +
+                                " -auto-alt-ref 0 " +
                                 " \"" + outputPath + "\"";
         System.Diagnostics.Process ffmpeg = new System.Diagnostics.Process();
+        ffmpeg.StartInfo.StandardOutputEncoding = System.Text.Encoding.UTF8;
+        ffmpeg.StartInfo.RedirectStandardOutput = true;
         ffmpeg.StartInfo.CreateNoWindow = true;
         ffmpeg.StartInfo.UseShellExecute = false;
         ffmpeg.StartInfo.FileName = ffmpegPath;

@@ -15,6 +15,8 @@ public class Program
         string[] imageExtensions = { ".BMP", ".JPG", ".JPEG", ".PNG", ".GIF", ".APNG", ".TIFF", ".TIF", ".WEBP", ".JPEG2000", ".TGA" };
         string audioFile = "";
         string imageFile = "";
+        double fileSize = 6000000;
+        string outputDirectory = System.IO.Directory.GetCurrentDirectory();
         // If a user opens the program by dragging files onto it, run in auto-mode
         if (args.Length > 0)
         {
@@ -31,7 +33,7 @@ public class Program
             {
                 string extension = System.IO.Path.GetExtension(file);
                 extension = extension.ToUpper();
-                if (Array.Exists(audioExtensions, element => element == extension))
+                if (audioFile == "" && Array.Exists(audioExtensions, element => element == extension))
                 {
                     
                     audioFile = file;
@@ -52,16 +54,24 @@ public class Program
                         }
                     }
                 }
-                else if (Array.Exists(imageExtensions, element => element == extension))
+                else if (imageFile == "" && Array.Exists(imageExtensions, element => element == extension))
                 {
                     Console.WriteLine(file);
                     imageFile = file;
                 }
+                // These don't actually function properly, but as-is they should be harmless, so they're left in for now
+                else if (System.IO.Directory.Exists(file))
+                {
+                    outputDirectory = file;
+                }
+                else if (double.TryParse(file, out double temp))
+                {
+                    fileSize = temp * 1000000;
+                }
             }
             if (audioFile == "" || imageFile == "")
             {
-                form.FormLayout();
-                Application.Run(form);
+                return;
             }
             else
             {
@@ -75,6 +85,7 @@ public class Program
                 string audioAlbum = "";
                 double audioDuration = 0;
                 System.Diagnostics.Process ffmpeg = new System.Diagnostics.Process();
+                ffmpeg.StartInfo.StandardErrorEncoding = System.Text.Encoding.UTF8;
                 ffmpeg.StartInfo.UseShellExecute = false;
                 ffmpeg.StartInfo.RedirectStandardError = true;
                 ffmpeg.StartInfo.FileName = ffmpegPath;
@@ -85,19 +96,19 @@ public class Program
                 string[] ffmpegOutputLines = ffmpegOutput.Split('\n');
                 foreach (string line in ffmpegOutputLines)
                 {
-                    if (line.Contains("TITLE"))
+                    if (audioTitle == "" && (line.Contains("TITLE") || line.Contains("title")))
                     {
                         audioTitle = line.Substring(line.IndexOf(":") + 1);
                     }
-                    else if (line.Contains("ARTIST"))
+                    else if (audioArtist == "" && (line.Contains("ARTIST") || line.Contains("artist")))
                     {
                         audioArtist = line.Substring(line.IndexOf(":") + 1);
                     }
-                    else if (line.Contains("ALBUM"))
+                    else if (audioAlbum == "" && (line.Contains("ALBUM") || line.Contains("album")))
                     {
                         audioAlbum = line.Substring(line.IndexOf(":") + 1);
                     }
-                    else if (line.Contains("Duration"))
+                    else if (audioDuration == 0 && line.Contains("Duration"))
                     {
                         string audioDurationLine = line.Substring(line.IndexOf(':') + 1);
                         string[] audioDurationSplit = audioDurationLine.Split(':');
@@ -108,7 +119,7 @@ public class Program
                     }
                 }
                 // Determine Quality
-                double bitrate = (6000000 * 8 / 1000) / audioDuration;
+                double bitrate = (fileSize * 8 / 1000) / audioDuration;
                 int[] qualityOptions = { 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 500 };
                 int quality = 10;
                 for (int i = 0; i < qualityOptions.Length; i++)
@@ -129,7 +140,7 @@ public class Program
                 }
                 // Create Webm
                 string shill = "Created using SAWCON.exe - https://GitHub.com/CATBIRDS/SAWCON";
-                string outputDirectory = System.IO.Directory.GetCurrentDirectory();
+                
                 string filename = audioFile.Substring(audioFile.LastIndexOf('\\') + 1);
                 string outputPath = "\"" + filename + ".webm\"";
                 if (audioTitle != "")
@@ -147,6 +158,8 @@ public class Program
                                 " -metadata comment=\"" + shill + "\"" +
                                 " \"" + outputPath + "\"";
                 System.Diagnostics.Process webm = new System.Diagnostics.Process();
+                webm.StartInfo.StandardOutputEncoding = System.Text.Encoding.UTF8;
+                webm.StartInfo.RedirectStandardOutput = true;
                 webm.StartInfo.UseShellExecute = false;
                 webm.StartInfo.FileName = ffmpegPath;
                 webm.StartInfo.Arguments = webmCommand;
